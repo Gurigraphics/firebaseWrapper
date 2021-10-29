@@ -221,7 +221,6 @@ var observerAuthChanged = auth.onAuthStateChanged(changed => {
 git clone https://github.com/Gurigraphics/firebaseWrapper
 cd firebaseWrapper
 npm install
-
 ```
 To Development run
 ```
