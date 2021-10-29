@@ -9,7 +9,7 @@ Size: 531kb
 ### Get start
 
 ```html
-  <script type="module" crossorigin src="dist/firebaseWrapper.js"></script>
+<script type="module" crossorigin src="dist/firebaseWrapper.js"></script>
 ```
 
 ```javascript
