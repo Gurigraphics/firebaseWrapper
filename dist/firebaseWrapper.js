@@ -389,6 +389,9 @@ const base64Encode = function(str) {
   const utf8Bytes = stringToByteArray$1(str);
   return base64.encodeByteArray(utf8Bytes, true);
 };
+const base64urlEncodeWithoutPadding = function(str) {
+  return base64Encode(str).replace(/\./g, "");
+};
 const base64Decode = function(str) {
   try {
     return base64.decodeString(str, true);
@@ -491,6 +494,56 @@ class Deferred {
       }
     };
   }
+}
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+function createMockUserToken(token, projectId) {
+  if (token.uid) {
+    throw new Error('The "uid" field is no longer supported by mockUserToken. Please use "sub" instead for Firebase Auth User ID.');
+  }
+  const header = {
+    alg: "none",
+    type: "JWT"
+  };
+  const project = projectId || "demo-project";
+  const iat = token.iat || 0;
+  const sub = token.sub || token.user_id;
+  if (!sub) {
+    throw new Error("mockUserToken must contain 'sub' or 'user_id' field!");
+  }
+  const payload = Object.assign({
+    iss: `https://securetoken.google.com/${project}`,
+    aud: project,
+    iat,
+    exp: iat + 3600,
+    auth_time: iat,
+    sub,
+    user_id: sub,
+    firebase: {
+      sign_in_provider: "custom",
+      identities: {}
+    }
+  }, token);
+  const signature = "";
+  return [
+    base64urlEncodeWithoutPadding(JSON.stringify(header)),
+    base64urlEncodeWithoutPadding(JSON.stringify(payload)),
+    signature
+  ].join(".");
 }
 /**
  * @license
@@ -10852,6 +10905,12 @@ syncTreeSetReferenceConstructor(ReferenceImpl);
 const FIREBASE_DATABASE_EMULATOR_HOST_VAR = "FIREBASE_DATABASE_EMULATOR_HOST";
 const repos = {};
 let useRestClient = false;
+function repoManagerApplyEmulatorSettings(repo, host, port, tokenProvider) {
+  repo.repoInfo_ = new RepoInfo(`${host}:${port}`, false, repo.repoInfo_.namespace, repo.repoInfo_.webSocketOnly, repo.repoInfo_.nodeAdmin, repo.repoInfo_.persistenceKey, repo.repoInfo_.includeNamespaceInQueryParams);
+  if (tokenProvider) {
+    repo.authTokenProvider_ = tokenProvider;
+  }
+}
 function repoManagerDatabaseFromApp(app2, authProvider, appCheckProvider, url, nodeAdmin) {
   let dbUrl = url || app2.options.databaseURL;
   if (dbUrl === void 0) {
@@ -10945,6 +11004,25 @@ function getDatabase(app2 = getApp(), url) {
     identifier: url
   });
 }
+function connectDatabaseEmulator(db2, host, port, options = {}) {
+  db2 = getModularInstance(db2);
+  db2._checkNotDeleted("useEmulator");
+  if (db2._instanceStarted) {
+    fatal("Cannot call useEmulator() after instance has already been initialized.");
+  }
+  const repo = db2._repoInternal;
+  let tokenProvider = void 0;
+  if (repo.repoInfo_.nodeAdmin) {
+    if (options.mockUserToken) {
+      fatal('mockUserToken is not supported by the Admin SDK. For client access with mock users, please use the "firebase" package instead of "firebase-admin".');
+    }
+    tokenProvider = new EmulatorTokenProvider(EmulatorTokenProvider.OWNER);
+  } else if (options.mockUserToken) {
+    const token = typeof options.mockUserToken === "string" ? options.mockUserToken : createMockUserToken(options.mockUserToken, db2.app.options.projectId);
+    tokenProvider = new EmulatorTokenProvider(token);
+  }
+  repoManagerApplyEmulatorSettings(repo, host, port, tokenProvider);
+}
 /**
  * @license
  * Copyright 2021 Google LLC
@@ -10979,106 +11057,6 @@ PersistentConnection.prototype.echo = function(data, onEcho) {
   this.sendRequest("echo", { d: data }, onEcho);
 };
 registerDatabase();
-var db, app;
-const getDb = () => db;
-const start = async (firebaseConfig) => {
-  try {
-    app = initializeApp(firebaseConfig);
-    db = getDatabase(app);
-    return { ok: "firebase started" };
-  } catch (error2) {
-    return { error: error2 };
-  }
-};
-var db = getDb();
-const getKey = async (url) => {
-  try {
-    var data = await push(child(ref(db), url));
-    return { ok: data.key };
-  } catch (error2) {
-    return { error: error2 };
-  }
-};
-const update = async (data) => {
-  try {
-    const updates = {};
-    updates[data.ref] = data.obj;
-    return await update$1(ref(db), updates).then(() => {
-      return { ok: "Data updated" };
-    }).catch((error2) => {
-      return { error: error2 };
-    });
-  } catch (error2) {
-    return { error: error2 };
-  }
-};
-const set = async (data) => {
-  try {
-    return await set$1(ref(db, data.ref), data.obj).then(() => {
-      return { ok: "Data setted" };
-    }).catch((error2) => {
-      return { error: error2 };
-    });
-  } catch (error2) {
-    return { error: error2 };
-  }
-};
-const once = async (url) => {
-  try {
-    return await get(ref(db, url)).then((snapshot) => {
-      if (snapshot.exists())
-        return { ok: snapshot.val() };
-      else
-        return { ok: "No data" };
-    }).catch((error2) => {
-      return { error: error2 };
-    });
-  } catch (error2) {
-    return { error: error2 };
-  }
-};
-const on = async (url, func2) => {
-  try {
-    var x = await onValue(ref(db, url), (snapshot) => {
-      const data = snapshot.val();
-      if (snapshot.exists())
-        return func2({ ok: data });
-      else
-        return func2({ ok: "No data" });
-    });
-  } catch (error2) {
-    return func2({ error: error2 });
-  }
-};
-const off = async (url) => {
-  try {
-    off$1(ref(db, url));
-    return { ok: "off" };
-  } catch (error2) {
-    return func({ error: error2 });
-  }
-};
-const remove = async (url) => {
-  try {
-    return await remove$1(ref(db, url)).then(() => {
-      return { ok: "Data removed" };
-    }).catch((error2) => {
-      return { error: error2 };
-    });
-  } catch (error2) {
-    return func({ error: error2 });
-  }
-};
-const database = {
-  getKey,
-  update,
-  set,
-  once,
-  on,
-  off,
-  remove,
-  start
-};
 function _prodErrorMap() {
   return {
     ["dependent-sdk-initialized-before-auth"]: "Another Firebase SDK was initialized and is trying to use Auth before Auth is initialized. Please be sure to call `initializeAuth` or `getAuth` before starting any other Firebase SDK."
@@ -12803,6 +12781,85 @@ class Subscription {
   get next() {
     _assert(this.observer, this.auth, "internal-error");
     return this.observer.next.bind(this.observer);
+  }
+}
+function connectAuthEmulator(auth2, url, options) {
+  const authInternal = _castAuth(auth2);
+  _assert(authInternal._canInitEmulator, authInternal, "emulator-config-failed");
+  _assert(/^https?:\/\//.test(url), authInternal, "invalid-emulator-scheme");
+  const disableWarnings = !!(options === null || options === void 0 ? void 0 : options.disableWarnings);
+  const protocol = extractProtocol(url);
+  const { host, port } = extractHostAndPort(url);
+  const portStr = port === null ? "" : `:${port}`;
+  authInternal.config.emulator = { url: `${protocol}//${host}${portStr}/` };
+  authInternal.settings.appVerificationDisabledForTesting = true;
+  authInternal.emulatorConfig = Object.freeze({
+    host,
+    port,
+    protocol: protocol.replace(":", ""),
+    options: Object.freeze({ disableWarnings })
+  });
+  if (!disableWarnings) {
+    emitEmulatorWarning();
+  }
+}
+function extractProtocol(url) {
+  const protocolEnd = url.indexOf(":");
+  return protocolEnd < 0 ? "" : url.substr(0, protocolEnd + 1);
+}
+function extractHostAndPort(url) {
+  const protocol = extractProtocol(url);
+  const authority = /(\/\/)?([^?#/]+)/.exec(url.substr(protocol.length));
+  if (!authority) {
+    return { host: "", port: null };
+  }
+  const hostAndPort = authority[2].split("@").pop() || "";
+  const bracketedIPv6 = /^(\[[^\]]+\])(:|$)/.exec(hostAndPort);
+  if (bracketedIPv6) {
+    const host = bracketedIPv6[1];
+    return { host, port: parsePort(hostAndPort.substr(host.length + 1)) };
+  } else {
+    const [host, port] = hostAndPort.split(":");
+    return { host, port: parsePort(port) };
+  }
+}
+function parsePort(portStr) {
+  if (!portStr) {
+    return null;
+  }
+  const port = Number(portStr);
+  if (isNaN(port)) {
+    return null;
+  }
+  return port;
+}
+function emitEmulatorWarning() {
+  function attachBanner() {
+    const el = document.createElement("p");
+    const sty = el.style;
+    el.innerText = "Running in emulator mode. Do not use with production credentials.";
+    sty.position = "fixed";
+    sty.width = "100%";
+    sty.backgroundColor = "#ffffff";
+    sty.border = ".1em solid #000000";
+    sty.color = "#b50000";
+    sty.bottom = "0px";
+    sty.left = "0px";
+    sty.margin = "0px";
+    sty.zIndex = "10000";
+    sty.textAlign = "center";
+    el.classList.add("firebase-emulator-warning");
+    document.body.appendChild(el);
+  }
+  if (typeof console !== "undefined" && typeof console.info === "function") {
+    console.info("WARNING: You are using the Auth Emulator, which is intended for local testing only.  Do not use with production credentials.");
+  }
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      window.addEventListener("DOMContentLoaded", attachBanner);
+    } else {
+      attachBanner();
+    }
   }
 }
 /**
@@ -15580,6 +15637,113 @@ function getAuth(app2 = getApp()) {
   });
 }
 registerAuth("Browser");
+var db, app;
+const getDb = () => db;
+const start = async (firebaseConfig, emulator) => {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    if (location.hostname === "localhost" && emulator && emulator.database) {
+      connectDatabaseEmulator(db, "localhost", emulator.database);
+    }
+    if (location.hostname === "localhost" && emulator && emulator.auth) {
+      const auth2 = getAuth();
+      connectAuthEmulator(auth2, `http://localhost:${emulator.auth}`);
+    }
+    return { ok: "firebase started" };
+  } catch (error2) {
+    return { error: error2 };
+  }
+};
+var db = getDb();
+const getKey = async (url) => {
+  try {
+    var data = await push(child(ref(db), url));
+    return { ok: data.key };
+  } catch (error2) {
+    return { error: error2 };
+  }
+};
+const update = async (data) => {
+  try {
+    const updates = {};
+    updates[data.ref] = data.obj;
+    return await update$1(ref(db), updates).then(() => {
+      return { ok: "Data updated" };
+    }).catch((error2) => {
+      return { error: error2 };
+    });
+  } catch (error2) {
+    return { error: error2 };
+  }
+};
+const set = async (data) => {
+  try {
+    return await set$1(ref(db, data.ref), data.obj).then(() => {
+      return { ok: "Data setted" };
+    }).catch((error2) => {
+      return { error: error2 };
+    });
+  } catch (error2) {
+    return { error: error2 };
+  }
+};
+const once = async (url) => {
+  try {
+    return await get(ref(db, url)).then((snapshot) => {
+      if (snapshot.exists())
+        return { ok: snapshot.val() };
+      else
+        return { ok: "No data" };
+    }).catch((error2) => {
+      return { error: error2 };
+    });
+  } catch (error2) {
+    return { error: error2 };
+  }
+};
+const on = async (url, func2) => {
+  try {
+    var x = await onValue(ref(db, url), (snapshot) => {
+      const data = snapshot.val();
+      if (snapshot.exists())
+        return func2({ ok: data });
+      else
+        return func2({ ok: "No data" });
+    });
+  } catch (error2) {
+    return func2({ error: error2 });
+  }
+};
+const off = async (url) => {
+  try {
+    off$1(ref(db, url));
+    return { ok: "off" };
+  } catch (error2) {
+    return func({ error: error2 });
+  }
+};
+const remove = async (url) => {
+  try {
+    return await remove$1(ref(db, url)).then(() => {
+      return { ok: "Data removed" };
+    }).catch((error2) => {
+      return { error: error2 };
+    });
+  } catch (error2) {
+    return func({ error: error2 });
+  }
+};
+const database = {
+  getKey,
+  update,
+  set,
+  once,
+  on,
+  off,
+  remove,
+  start
+};
 const createUserWithEmailAndPassword = async (data) => {
   try {
     const auth2 = getAuth();
