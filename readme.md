@@ -2,7 +2,7 @@
 
 FirebaseWrapper is a wrapper/helper to Firebase.
 
-Now the methods always return {ok: ok} or {error: error} like elixir and go.
+In this lib the methods always return {ok: ok} or {error: error} like elixir and go.
 
 Size: 531kb
 
@@ -59,6 +59,7 @@ var observerDataOff = database.start().then(function(data){
    console.log("started")
    console.log(data)
 })
+```
 
 ```javascript
 /*
@@ -117,7 +118,8 @@ var observerData = database.on('database', changed => {
 
    console.log("atualizou")
    console.log(changed)
-})```
+})
+```
 
 ```javascript
 /*
@@ -130,6 +132,7 @@ var removeData = database.remove('database/data').then(function(data){
    console.log(data)
 })
 ```
+
 ```javascript
 /*
 Return: {ok: "off"}
