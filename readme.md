@@ -184,7 +184,6 @@ var login = auth.createUserWithEmailAndPassword({
    password: "senha123"
 }).then(function(value){
    console.log(value)
-  // firebase.signOut() 
 })
 ```
 #### signInWithEmailAndPassword
@@ -198,7 +197,6 @@ var login = auth.signInWithEmailAndPassword({
    password: "senha123"
 }).then(function(value){
    console.log(value)
-  // firebase.signOut() 
 })
 ```
 #### onAuthStateChanged
