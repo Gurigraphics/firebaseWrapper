@@ -50,6 +50,7 @@ var getDataThen = database.once("database").then(function(value){
 
 ### Database
 
+#### start
 ```javascript
 /*
 Return: { ok: "firebase started" } 
@@ -61,6 +62,7 @@ var observerDataOff = database.start().then(function(data){
 })
 ```
 
+#### getKey
 ```javascript
 /*
 Return: {ok: '-MnAo-WjISLyLV8vNwi8'}
@@ -70,7 +72,7 @@ var getRefKey = database.getKey("database").then(function(value){
    console.log(value)
 })
 ```
-
+#### update
 ```javascript
 /*
 Return: {ok: 'Data updated'}
@@ -84,6 +86,7 @@ var updateData = database.update({
 })
  ```
 
+#### set
 ```javascript
 /*
 Return: {ok: 'Data setted'}
@@ -97,6 +100,7 @@ var setData = database.set({
 })
 ```
 
+#### once
 ```javascript
 /*
 Return: {ok: value}
@@ -108,6 +112,7 @@ var getData = database.once("database").then(function(value){
 })
 ```
 
+#### on
 ```javascript
 /*
 Return: {ok: value}
@@ -120,7 +125,7 @@ var observerData = database.on('database', changed => {
    console.log(changed)
 })
 ```
-
+#### remove
 ```javascript
 /*
 Return: {ok: "Data removed"}
@@ -132,7 +137,7 @@ var removeData = database.remove('database/data').then(function(data){
    console.log(data)
 })
 ```
-
+#### off
 ```javascript
 /*
 Return: {ok: "off"}
@@ -147,6 +152,7 @@ var observerDataOff = database.off('database').then(function(data){
 
 ### Auth
  
+#### signInAnonymously
 ```javascript
 /*
 Return: { ok: "signed in", data: userCredential.user } 
@@ -156,7 +162,7 @@ var loginAnonymously = auth.signInAnonymously().then(function(value){
    console.log(value)
 })
 ```
-
+#### signOut
 ```javascript
 /*
 Return: { ok: "signed out" } 
@@ -167,6 +173,7 @@ var logout = auth.signOut().then(function(value){
 })
 ```
 
+#### createUserWithEmailAndPassword
 ```javascript
 /*
 Return: { ok: "user created", data: userCredential.user } 
@@ -180,7 +187,7 @@ var login = auth.createUserWithEmailAndPassword({
   // firebase.signOut() 
 })
 ```
-
+#### signInWithEmailAndPassword
 ```javascript
 /*
 Return: { ok: "signed in", data: userCredential.user } 
@@ -194,7 +201,7 @@ var login = auth.signInWithEmailAndPassword({
   // firebase.signOut() 
 })
 ```
-
+#### onAuthStateChanged
 ```javascript
 /*
 Return: { ok: "signed in", data: user, uid: user.uid }
