@@ -23,15 +23,18 @@ const firebaseConfig = {
     appId: "1:881609zzzzzzz:web:aaf4d12764fczzzzzzzzzzz"
 };
 
+//start
 var start = await database.start( firebaseConfig )
 console.log(start)
 
+//update data
 var updateData = await database.update({
    ref: "database",
    obj: { data: 6 }
 })
 console.log(updateData)
 
+//get data
 var getData = await database.once("database")
 console.log(getData)
 
@@ -41,31 +44,6 @@ var getDataThen = database.once("database").then(function(value){
    console.log(getDataThen)
 })
 
-```
-
-### Emulators
-
-1) To use emulators create a new project 
-```javascript
-firebase init
-
-```
-2) Select -> database, auth and emulators
-
-
-3) In public folder add your HTML and JS files. And insert database and auth ports
-
-```javascript
-var start = await database.start( firebaseConfig, { database: 9000, auth: 9099 } )
-console.log(start)
-```
-
-4) Add the file "firebaseWrapper.js" to folder "your-project-name/public/source"
-
-3) To execute emulators run
-
-```
-firebase emulators:start --export-on-exit=./saved-data --import=./saved-data
 ```
 
 ## Methods

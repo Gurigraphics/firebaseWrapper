@@ -8,40 +8,40 @@ import {
 	signOut as _signOut
 } from "firebase/auth";
  
-const createUserWithEmailAndPassword = async(data) => {
+const createUserWithEmailAndPassword = async(email, password) => {
 	 try{
    const auth = getAuth();
-	return await _createUserWithEmailAndPassword(auth, data.email, data.password)
+	return await _createUserWithEmailAndPassword(auth, email, password)
   .then((userCredential) => {
   	  return { ok: "user created", data: userCredential.user } 
   })
   .catch((error) => {
     const errorCode = error.code;
     const errorMessage = error.message;
-    return { error: errorMessage, errorCode: errorCode } 
+    return { error: errorMessage, errorCode: errorCode, fn: "createUserWithEmailAndPassword" } 
   })
      }catch(error) {
-	  return { error: error }
+	  return { error: error, fn: "createUserWithEmailAndPassword" }
    }  
 }
 
-const signInWithEmailAndPassword = async(data) => {
+const signInWithEmailAndPassword = async(email, password) => {
 	 try{
    const auth = getAuth();
-  return await _signInWithEmailAndPassword(auth, data.email, data.password).then((userCredential) => {
+  return await _signInWithEmailAndPassword(auth, email, password).then((userCredential) => {
   	  // Signed in
   	  return { ok: "signed in", data: userCredential.user } 
   }).catch((error) => {
     const errorCode = error.code;
     const errorMessage = error.message;
-    return { error: errorMessage, errorCode: errorCode } 
+    return { error: errorMessage, errorCode: errorCode, fn: "signInWithEmailAndPassword" } 
   })
    }catch(error) {
-	  return { error: error }
+	  return { error: error, fn: "signInWithEmailAndPassword" }
    }  
 }
 
-const signInAnonymously = async(data) => {
+const signInAnonymously = async() => {
 	try{
   const auth = getAuth();
   return await _signInAnonymously(auth)
@@ -52,10 +52,10 @@ const signInAnonymously = async(data) => {
   .catch((error) => {
     const errorCode = error.code;
     const errorMessage = error.message;
-    return { error: errorMessage, errorCode: errorCode } 
+    return { error: errorMessage, errorCode: errorCode, fn: "signInAnonymously" } 
   });
     }catch(error) {
-	  return { error: error }
+	  return { error: error, fn: "signInAnonymously" }
    }  
 }
 
@@ -66,10 +66,10 @@ const signOut = async() => {
   	// Signed out..
     return { ok: "signed out" }   
   }).catch((error) => {
-     return { error: error } 
+     return { error: error, fn: "signOut" } 
   });
     }catch(error) {
-	  return { error: error }
+	  return { error: error, fn: "signOut" }
    }  
 }
 
@@ -85,7 +85,7 @@ const onAuthStateChanged = async(func) => {
 	  }
 	});
 	   }catch(error) {
-	  return func({ error: error }) 
+	  return func({ error: error, fn: "onAuthStateChanged" }) 
    } 
 }
 

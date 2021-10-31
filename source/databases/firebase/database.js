@@ -2,12 +2,15 @@ import { db, start } from "./main"
 import { 
 	ref, 
 	set as _set, 
-	get, child, 
+	get as _get, 
+	child, 
 	onValue, 
 	update as _update, 
 	push, 
 	off as _off, 
-	remove as _remove 
+	remove as _remove,
+	onDisconnect as _onDisconnect,
+	runTransaction
 } from "firebase/database"; 
 
 const getKey = async url => {
@@ -15,48 +18,48 @@ const getKey = async url => {
 	    var data = await push(child(ref(db), url))
 	    return { ok: data.key }
 	}catch(error) {
-	    return { error: error }
+	    return { error: error, fn: "getKey" }
 	}  
 }
 
-const update = async(data) => {   
+const update = async(url, obj) => {   
  try{
-  const updates = {};
-  updates[data.ref] = data.obj;
+  //const updates = {};
+ // updates[url] = data.obj;
 
-  return await _update(ref(db), updates).then(() => {	
+  return await _update(ref(db, url), obj).then(() => {	
 	   return { ok: "Data updated" }
   }).catch((error) => {
-	   return { error: error }
+	   return { error: error, fn: "update" }
   }) 
     }catch(error){
-    return { error: error } 
+    return { error: error, fn: "update" } 
   }  
 } 
  
-const set = async(data) => {
+const set = async(url, obj) => {
    try{
-	return await _set(ref(db, data.ref), data.obj).then(() => {	
+	return await _set(ref(db, url), obj).then(() => {	
 	   return { ok: "Data setted" }
 	}).catch((error) => {
-	   return { error: error }
+	   return { error: error, fn: "set" }
 	}) 
   }catch(error){
-    return { error: error } 
+    return { error: error, fn: "set" } 
   } 
 }
 
-const once = async(url) => { 
+const get = async(url) => { 
 	try{ 
-   return await get( ref(db, url) ).then((snapshot) => {
+   return await _get( ref(db, url) ).then((snapshot) => {
 	  if( snapshot.exists() ) return { ok: snapshot.val() }
 	  else return { ok: "No data" }
 
 	}).catch((error) => {
-	   return { error: error }
+	   return { error: error, fn: "get" }
 	})  
   }catch(error){
-    return { error: error } 
+    return { error: error, fn: "get" } 
   }
 }
  
@@ -69,7 +72,7 @@ const on = async(url, func) => {
 		}) 
 
 	}catch(error) {
-	    return func({ error: error }) 
+	    return func({ error: error, fn: "on" }) 
 	}   
 }
 
@@ -80,7 +83,7 @@ const off = async(url) => {
 	  return { ok: "off"}	  
 
    }catch(error) {
-	  return func({ error: error }) 
+	  return func({ error: error, fn: "off" }) 
    }   
 }
  
@@ -89,20 +92,124 @@ const remove = async(url) => {
 	return await _remove( ref(db, url) ).then(() => {	
 	   return { ok: "Data removed" }
 	}).catch((error) => {
-	   return { error: error }
+	   return { error: error, fn: "remove" }
 	})  
 	   }catch(error) {
-	  return func({ error: error }) 
+	  return func({ error: error, fn: "remove" }) 
    }  
-}
+} 
+
+const onDisconnectUpdate = async(url, obj) => {   
+ try{
+
+ 	  const presenceRef = ref(db, url); 
+    _onDisconnect(presenceRef).update(obj);
+
+	  return {ok: "onDisconnectUpdate"}
+
+  }catch(error){
+    return { error: error, fn: "onDisconnectUpdate" } 
+  }  
+} 
+
+const onDisconnectRemove = async(url) => {   
+ try{
+
+ 	  const presenceRef = ref(db, url); 
+ 	  _onDisconnect(presenceRef).remove().catch((error) => {
+		  if (error) {
+		    return { error: error, fn: "onDisconnectRemove" } 
+		  }
+		});
+
+	  return {ok: "onDisconnectRemove"}
+
+  }catch(error){
+    return { error: error, fn: "onDisconnectRemove" } 
+  }  
+}  
+
+const onDisconnectCancel = async(url) => {   
+ try{
+
+ 	  const presenceRef = ref(db, url)
+ 	  _onDisconnect(presenceRef).cancel()
+
+	  return { ok: "onDisconnectCancel" }
+
+  }catch(error){
+    return { error: error, fn: "onDisconnectCancel" } 
+  }  
+}  
+ 
+const connect = async(func) => {   
+ try{
+
+ 	  const connectedRef = ref(db, ".info/connected");
+		onValue(connectedRef, (snap) => {
+		  if (snap.val() === true) {
+		    return func({ ok: "connected" })
+		  } else {
+		  	return func({ ok: "disconnected" })		    
+		  }
+		})
+
+  }catch(error){
+    return { error: error, fn: "connected" } 
+  }  
+}  
+ 
+const inc = async(url, param) => {	
+ 	try {
+	  const postRef = ref(db, url);
+
+	  await runTransaction(postRef, (post) => {
+	    if (post && post[param]) {
+	        post[param]++   
+	    }else if (post) {       
+	        post[param] = 1      
+	    }
+	    return post;
+	  })
+
+	  return { ok: "inc"} 
+	} catch (error) {	 
+	  return { error: error, fn: "inc" } 
+	}
+} 
+
+const dec = async(url, param) => {	
+ 	try {
+	  const postRef = ref(db, url);
+
+	  await runTransaction(postRef, (post) => {
+	    if (post && post[param]) {
+	        post[param]--   
+	    }else if (post) {       
+	        post[param] = 0     
+	    }
+	    return post;
+	  })
+
+	  return { ok: "dec"} 
+	} catch (error) {	 
+	  return { error: error, fn: "dec" } 
+	}
+}  
  
 export const database = {
 	getKey,
 	update,
 	set,
-	once,
+	get,
 	on,
 	off,
 	remove,
-	start
+	start,
+	onDisconnectUpdate,
+	onDisconnectRemove,
+	connect,
+	inc,
+	dec
 }
+ 
