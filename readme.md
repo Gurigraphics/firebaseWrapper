@@ -4,7 +4,7 @@ FirebaseWrapper is a wrapper/helper to Firebase.
 
 In this lib the methods always return {ok: ok} or {error: error, fn: "funcName"} like elixir and go.
 
-Size: 531kb
+Size: 548kb
 
 ### Get start
 

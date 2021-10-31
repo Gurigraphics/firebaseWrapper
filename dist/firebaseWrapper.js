@@ -2921,9 +2921,9 @@ class BrowserPollConnection {
       return repoInfoConnectionURL(repoInfo, LONG_POLLING, params);
     };
   }
-  open(onMessage, onDisconnect) {
+  open(onMessage, onDisconnect2) {
     this.curSegmentNum = 0;
-    this.onDisconnect_ = onDisconnect;
+    this.onDisconnect_ = onDisconnect2;
     this.myPacketOrderer = new PacketReceiver(onMessage);
     this.isClosed_ = false;
     this.connectTimeoutTimer_ = setTimeout(() => {
@@ -3074,8 +3074,8 @@ class BrowserPollConnection {
   }
 }
 class FirebaseIFrameScriptHolder {
-  constructor(commandCB, onMessageCB, onDisconnect, urlFn) {
-    this.onDisconnect = onDisconnect;
+  constructor(commandCB, onMessageCB, onDisconnect2, urlFn) {
+    this.onDisconnect = onDisconnect2;
     this.urlFn = urlFn;
     this.outstandingRequests = new Set();
     this.pendingSegs = [];
@@ -3142,10 +3142,10 @@ class FirebaseIFrameScriptHolder {
         }
       }, Math.floor(0));
     }
-    const onDisconnect = this.onDisconnect;
-    if (onDisconnect) {
+    const onDisconnect2 = this.onDisconnect;
+    if (onDisconnect2) {
       this.onDisconnect = null;
-      onDisconnect();
+      onDisconnect2();
     }
   }
   startLongPoll(id, pw) {
@@ -3291,8 +3291,8 @@ class WebSocketConnection {
     }
     return repoInfoConnectionURL(repoInfo, WEBSOCKET, urlParams);
   }
-  open(onMessage, onDisconnect) {
-    this.onDisconnect = onDisconnect;
+  open(onMessage, onDisconnect2) {
+    this.onDisconnect = onDisconnect2;
     this.onMessage = onMessage;
     this.log_("Websocket connecting to " + this.connURL);
     this.everConnected_ = false;
@@ -3770,8 +3770,8 @@ class Connection {
     this.secondaryConn_ = new conn(this.nextTransportId_(), this.repoInfo_, this.applicationId_, this.appCheckToken_, this.authToken_, this.sessionId);
     this.secondaryResponsesRequired_ = conn["responsesRequiredToBeHealthy"] || 0;
     const onMessage = this.connReceiver_(this.secondaryConn_);
-    const onDisconnect = this.disconnReceiver_(this.secondaryConn_);
-    this.secondaryConn_.open(onMessage, onDisconnect);
+    const onDisconnect2 = this.disconnReceiver_(this.secondaryConn_);
+    this.secondaryConn_.open(onMessage, onDisconnect2);
     setTimeoutNonBlocking(() => {
       if (this.secondaryConn_) {
         this.log_("Timed out trying to upgrade.");
@@ -4780,7 +4780,7 @@ class PersistentConnection extends ServerActions {
       this.lastConnectionEstablishedTime_ = null;
       const onDataMessage = this.onDataMessage_.bind(this);
       const onReady = this.onReady_.bind(this);
-      const onDisconnect = this.onRealtimeDisconnect_.bind(this);
+      const onDisconnect2 = this.onRealtimeDisconnect_.bind(this);
       const connId = this.id + ":" + PersistentConnection.nextConnectionId_++;
       const lastSessionId = this.lastSessionId;
       let canceled = false;
@@ -4790,7 +4790,7 @@ class PersistentConnection extends ServerActions {
           connection.close();
         } else {
           canceled = true;
-          onDisconnect();
+          onDisconnect2();
         }
       };
       const sendRequestFn = function(msg) {
@@ -4812,7 +4812,7 @@ class PersistentConnection extends ServerActions {
           log("getToken() completed. Creating connection.");
           this.authToken_ = authToken && authToken.accessToken;
           this.appCheckToken_ = appCheckToken && appCheckToken.token;
-          connection = new Connection(connId, this.repoInfo_, this.applicationId_, this.appCheckToken_, this.authToken_, onDataMessage, onReady, onDisconnect, (reason) => {
+          connection = new Connection(connId, this.repoInfo_, this.applicationId_, this.appCheckToken_, this.authToken_, onDataMessage, onReady, onDisconnect2, (reason) => {
             warn(reason + " (" + this.repoInfo_.toString() + ")");
             this.interrupt(SERVER_KILL_INTERRUPT_REASON);
           }, lastSessionId);
@@ -7236,6 +7236,38 @@ function sparseSnapshotTreeRemember(sparseSnapshotTree, path, data) {
     const child2 = sparseSnapshotTree.children.get(childKey);
     path = pathPopFront(path);
     sparseSnapshotTreeRemember(child2, path, data);
+  }
+}
+function sparseSnapshotTreeForget(sparseSnapshotTree, path) {
+  if (pathIsEmpty(path)) {
+    sparseSnapshotTree.value = null;
+    sparseSnapshotTree.children.clear();
+    return true;
+  } else {
+    if (sparseSnapshotTree.value !== null) {
+      if (sparseSnapshotTree.value.isLeafNode()) {
+        return false;
+      } else {
+        const value = sparseSnapshotTree.value;
+        sparseSnapshotTree.value = null;
+        value.forEachChild(PRIORITY_INDEX, (key, tree) => {
+          sparseSnapshotTreeRemember(sparseSnapshotTree, new Path(key), tree);
+        });
+        return sparseSnapshotTreeForget(sparseSnapshotTree, path);
+      }
+    } else if (sparseSnapshotTree.children.size > 0) {
+      const childKey = pathGetFront(path);
+      path = pathPopFront(path);
+      if (sparseSnapshotTree.children.has(childKey)) {
+        const safeToRemove = sparseSnapshotTreeForget(sparseSnapshotTree.children.get(childKey), path);
+        if (safeToRemove) {
+          sparseSnapshotTree.children.delete(childKey);
+        }
+      }
+      return sparseSnapshotTree.children.size === 0;
+    } else {
+      return true;
+    }
   }
 }
 function sparseSnapshotTreeForEachTree(sparseSnapshotTree, prefixPath, func2) {
@@ -9712,6 +9744,17 @@ const validateFirebaseMergeDataArg = function(fnName, data, path, optional) {
   });
   validateFirebaseMergePaths(errorPrefix$1, mergePaths);
 };
+const validatePriority = function(fnName, priority, optional) {
+  if (optional && priority === void 0) {
+    return;
+  }
+  if (isInvalidJSONNumber(priority)) {
+    throw new Error(errorPrefix(fnName, "priority") + "is " + priority.toString() + ", but must be a valid Firebase priority (a string, finite number, server value, or null).");
+  }
+  if (!isValidPriority(priority)) {
+    throw new Error(errorPrefix(fnName, "priority") + "must be a valid Firebase priority (a string, finite number, server value, or null).");
+  }
+};
 const validatePathString = function(fnName, argumentName, pathString, optional) {
   if (optional && pathString === void 0) {
     return;
@@ -10068,6 +10111,48 @@ function repoRunOnDisconnectEvents(repo) {
   repo.onDisconnect_ = newSparseSnapshotTree();
   eventQueueRaiseEventsForChangedPath(repo.eventQueue_, newEmptyPath(), events);
 }
+function repoOnDisconnectCancel(repo, path, onComplete) {
+  repo.server_.onDisconnectCancel(path.toString(), (status, errorReason) => {
+    if (status === "ok") {
+      sparseSnapshotTreeForget(repo.onDisconnect_, path);
+    }
+    repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+  });
+}
+function repoOnDisconnectSet(repo, path, value, onComplete) {
+  const newNode = nodeFromJSON(value);
+  repo.server_.onDisconnectPut(path.toString(), newNode.val(true), (status, errorReason) => {
+    if (status === "ok") {
+      sparseSnapshotTreeRemember(repo.onDisconnect_, path, newNode);
+    }
+    repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+  });
+}
+function repoOnDisconnectSetWithPriority(repo, path, value, priority, onComplete) {
+  const newNode = nodeFromJSON(value, priority);
+  repo.server_.onDisconnectPut(path.toString(), newNode.val(true), (status, errorReason) => {
+    if (status === "ok") {
+      sparseSnapshotTreeRemember(repo.onDisconnect_, path, newNode);
+    }
+    repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+  });
+}
+function repoOnDisconnectUpdate(repo, path, childrenToMerge, onComplete) {
+  if (isEmpty(childrenToMerge)) {
+    log("onDisconnect().update() called with empty data.  Don't do anything.");
+    repoCallOnCompleteCallback(repo, onComplete, "ok", void 0);
+    return;
+  }
+  repo.server_.onDisconnectMerge(path.toString(), childrenToMerge, (status, errorReason) => {
+    if (status === "ok") {
+      each(childrenToMerge, (childName, childNode) => {
+        const newChildNode = nodeFromJSON(childNode);
+        sparseSnapshotTreeRemember(repo.onDisconnect_, pathChild(path, childName), newChildNode);
+      });
+    }
+    repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+  });
+}
 function repoAddEventCallbackForQuery(repo, query, eventRegistration) {
   let events;
   if (pathGetFront(query._path) === ".info") {
@@ -10114,6 +10199,59 @@ function repoCallOnCompleteCallback(repo, callback, status, errorReason) {
         callback(error2);
       }
     });
+  }
+}
+function repoStartTransaction(repo, path, transactionUpdate, onComplete, unwatcher, applyLocally) {
+  repoLog(repo, "transaction on " + path);
+  const transaction = {
+    path,
+    update: transactionUpdate,
+    onComplete,
+    status: null,
+    order: LUIDGenerator(),
+    applyLocally,
+    retryCount: 0,
+    unwatcher,
+    abortReason: null,
+    currentWriteId: null,
+    currentInputSnapshot: null,
+    currentOutputSnapshotRaw: null,
+    currentOutputSnapshotResolved: null
+  };
+  const currentState = repoGetLatestState(repo, path, void 0);
+  transaction.currentInputSnapshot = currentState;
+  const newVal = transaction.update(currentState.val());
+  if (newVal === void 0) {
+    transaction.unwatcher();
+    transaction.currentOutputSnapshotRaw = null;
+    transaction.currentOutputSnapshotResolved = null;
+    if (transaction.onComplete) {
+      transaction.onComplete(null, false, transaction.currentInputSnapshot);
+    }
+  } else {
+    validateFirebaseData("transaction failed: Data returned ", newVal, transaction.path);
+    transaction.status = 0;
+    const queueNode = treeSubTree(repo.transactionQueueTree_, path);
+    const nodeQueue = treeGetValue(queueNode) || [];
+    nodeQueue.push(transaction);
+    treeSetValue(queueNode, nodeQueue);
+    let priorityForNode;
+    if (typeof newVal === "object" && newVal !== null && contains(newVal, ".priority")) {
+      priorityForNode = safeGet(newVal, ".priority");
+      assert(isValidPriority(priorityForNode), "Invalid priority returned by transaction. Priority must be a valid string, finite number, server value, or null.");
+    } else {
+      const currentNode = syncTreeCalcCompleteEventCache(repo.serverSyncTree_, path) || ChildrenNode.EMPTY_NODE;
+      priorityForNode = currentNode.getPriority().val();
+    }
+    const serverValues = repoGenerateServerValues(repo);
+    const newNodeUnresolved = nodeFromJSON(newVal, priorityForNode);
+    const newNode = resolveDeferredValueSnapshot(newNodeUnresolved, currentState, serverValues);
+    transaction.currentOutputSnapshotRaw = newNodeUnresolved;
+    transaction.currentOutputSnapshotResolved = newNode;
+    transaction.currentWriteId = repoGetNextWriteId(repo);
+    const events = syncTreeApplyUserOverwrite(repo.serverSyncTree_, path, newNode, transaction.currentWriteId, transaction.applyLocally);
+    eventQueueRaiseEventsForChangedPath(repo.eventQueue_, path, events);
+    repoSendReadyTransactions(repo, repo.transactionQueueTree_);
   }
 }
 function repoGetLatestState(repo, path, excludeSets) {
@@ -10586,6 +10724,66 @@ class CallbackContext {
 }
 /**
  * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+class OnDisconnect {
+  constructor(_repo, _path) {
+    this._repo = _repo;
+    this._path = _path;
+  }
+  cancel() {
+    const deferred = new Deferred();
+    repoOnDisconnectCancel(this._repo, this._path, deferred.wrapCallback(() => {
+    }));
+    return deferred.promise;
+  }
+  remove() {
+    validateWritablePath("OnDisconnect.remove", this._path);
+    const deferred = new Deferred();
+    repoOnDisconnectSet(this._repo, this._path, null, deferred.wrapCallback(() => {
+    }));
+    return deferred.promise;
+  }
+  set(value) {
+    validateWritablePath("OnDisconnect.set", this._path);
+    validateFirebaseDataArg("OnDisconnect.set", value, this._path, false);
+    const deferred = new Deferred();
+    repoOnDisconnectSet(this._repo, this._path, value, deferred.wrapCallback(() => {
+    }));
+    return deferred.promise;
+  }
+  setWithPriority(value, priority) {
+    validateWritablePath("OnDisconnect.setWithPriority", this._path);
+    validateFirebaseDataArg("OnDisconnect.setWithPriority", value, this._path, false);
+    validatePriority("OnDisconnect.setWithPriority", priority, false);
+    const deferred = new Deferred();
+    repoOnDisconnectSetWithPriority(this._repo, this._path, value, priority, deferred.wrapCallback(() => {
+    }));
+    return deferred.promise;
+  }
+  update(values) {
+    validateWritablePath("OnDisconnect.update", this._path);
+    validateFirebaseMergeDataArg("OnDisconnect.update", values, this._path, false);
+    const deferred = new Deferred();
+    repoOnDisconnectUpdate(this._repo, this._path, values, deferred.wrapCallback(() => {
+    }));
+    return deferred.promise;
+  }
+}
+/**
+ * @license
  * Copyright 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -10725,6 +10923,10 @@ function child(parent, path) {
   }
   return new ReferenceImpl(parent._repo, pathChild(parent._path, path));
 }
+function onDisconnect(ref2) {
+  ref2 = getModularInstance(ref2);
+  return new OnDisconnect(ref2._repo, ref2._path);
+}
 function push(parent, value) {
   parent = getModularInstance(parent);
   validateWritablePath("push", parent._path);
@@ -10763,7 +10965,7 @@ function update$1(ref2, values) {
   }));
   return deferred.promise;
 }
-function get(query) {
+function get$1(query) {
   query = getModularInstance(query);
   return repoGetValue(query._repo, query).then((node) => {
     return new DataSnapshot(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
@@ -11049,6 +11251,54 @@ function registerDatabase(variant) {
   }, "PUBLIC").setMultipleInstances(true));
   registerVersion(name$1, version$1, variant);
   registerVersion(name$1, version$1, "esm2017");
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+class TransactionResult {
+  constructor(committed, snapshot) {
+    this.committed = committed;
+    this.snapshot = snapshot;
+  }
+  toJSON() {
+    return { committed: this.committed, snapshot: this.snapshot.toJSON() };
+  }
+}
+function runTransaction(ref2, transactionUpdate, options) {
+  var _a;
+  ref2 = getModularInstance(ref2);
+  validateWritablePath("Reference.transaction", ref2._path);
+  if (ref2.key === ".length" || ref2.key === ".keys") {
+    throw "Reference.transaction failed: " + ref2.key + " is a read-only object.";
+  }
+  const applyLocally = (_a = options === null || options === void 0 ? void 0 : options.applyLocally) !== null && _a !== void 0 ? _a : true;
+  const deferred = new Deferred();
+  const promiseComplete = (error2, committed, node) => {
+    let dataSnapshot = null;
+    if (error2) {
+      deferred.reject(error2);
+    } else {
+      dataSnapshot = new DataSnapshot(node, new ReferenceImpl(ref2._repo, ref2._path), PRIORITY_INDEX);
+      deferred.resolve(new TransactionResult(committed, dataSnapshot));
+    }
+  };
+  const unwatcher = onValue(ref2, () => {
+  });
+  repoStartTransaction(ref2._repo, ref2._path, transactionUpdate, promiseComplete, unwatcher, applyLocally);
+  return deferred.promise;
 }
 PersistentConnection.prototype.simpleListen = function(pathString, onComplete) {
   this.sendRequest("q", { p: pathString }, onComplete);
@@ -15650,7 +15900,7 @@ const start = async (firebaseConfig, emulator) => {
       const auth2 = getAuth();
       connectAuthEmulator(auth2, `http://localhost:${emulator.auth}`);
     }
-    return { ok: "firebase started" };
+    return { ok: "start" };
   } catch (error2) {
     return { error: error2 };
   }
@@ -15661,45 +15911,43 @@ const getKey = async (url) => {
     var data = await push(child(ref(db), url));
     return { ok: data.key };
   } catch (error2) {
-    return { error: error2 };
+    return { error: error2, fn: "getKey" };
   }
 };
-const update = async (data) => {
+const update = async (url, obj) => {
   try {
-    const updates = {};
-    updates[data.ref] = data.obj;
-    return await update$1(ref(db), updates).then(() => {
-      return { ok: "Data updated" };
+    return await update$1(ref(db, url), obj).then(() => {
+      return { ok: "update" };
     }).catch((error2) => {
-      return { error: error2 };
+      return { error: error2, fn: "update" };
     });
   } catch (error2) {
-    return { error: error2 };
+    return { error: error2, fn: "update" };
   }
 };
-const set = async (data) => {
+const set = async (url, obj) => {
   try {
-    return await set$1(ref(db, data.ref), data.obj).then(() => {
-      return { ok: "Data setted" };
+    return await set$1(ref(db, url), obj).then(() => {
+      return { ok: "set" };
     }).catch((error2) => {
-      return { error: error2 };
+      return { error: error2, fn: "set" };
     });
   } catch (error2) {
-    return { error: error2 };
+    return { error: error2, fn: "set" };
   }
 };
-const once = async (url) => {
+const get = async (url) => {
   try {
-    return await get(ref(db, url)).then((snapshot) => {
+    return await get$1(ref(db, url)).then((snapshot) => {
       if (snapshot.exists())
         return { ok: snapshot.val() };
       else
-        return { ok: "No data" };
+        return { error: "No exists", fn: "get" };
     }).catch((error2) => {
-      return { error: error2 };
+      return { error: error2, fn: "get" };
     });
   } catch (error2) {
-    return { error: error2 };
+    return { error: error2, fn: "get" };
   }
 };
 const on = async (url, func2) => {
@@ -15709,10 +15957,10 @@ const on = async (url, func2) => {
       if (snapshot.exists())
         return func2({ ok: data });
       else
-        return func2({ ok: "No data" });
+        return { error: "No exists", fn: "get" };
     });
   } catch (error2) {
-    return func2({ error: error2 });
+    return func2({ error: error2, fn: "on" });
   }
 };
 const off = async (url) => {
@@ -15720,82 +15968,155 @@ const off = async (url) => {
     off$1(ref(db, url));
     return { ok: "off" };
   } catch (error2) {
-    return func({ error: error2 });
+    return func({ error: error2, fn: "off" });
   }
 };
 const remove = async (url) => {
   try {
     return await remove$1(ref(db, url)).then(() => {
-      return { ok: "Data removed" };
+      return { ok: "remove" };
     }).catch((error2) => {
-      return { error: error2 };
+      return { error: error2, fn: "remove" };
     });
   } catch (error2) {
-    return func({ error: error2 });
+    return func({ error: error2, fn: "remove" });
+  }
+};
+const onDisconnectUpdate = async (url, obj) => {
+  try {
+    const presenceRef = ref(db, url);
+    onDisconnect(presenceRef).update(obj);
+    return { ok: "onDisconnectUpdate" };
+  } catch (error2) {
+    return { error: error2, fn: "onDisconnectUpdate" };
+  }
+};
+const onDisconnectRemove = async (url) => {
+  try {
+    const presenceRef = ref(db, url);
+    onDisconnect(presenceRef).remove().catch((error2) => {
+      if (error2) {
+        return { error: error2, fn: "onDisconnectRemove" };
+      }
+    });
+    return { ok: "onDisconnectRemove" };
+  } catch (error2) {
+    return { error: error2, fn: "onDisconnectRemove" };
+  }
+};
+const connect = async (func2) => {
+  try {
+    const connectedRef = ref(db, ".info/connected");
+    onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        return func2({ ok: "connected" });
+      } else {
+        return func2({ ok: "disconnected" });
+      }
+    });
+  } catch (error2) {
+    return { error: error2, fn: "connect" };
+  }
+};
+const inc = async (url, param) => {
+  try {
+    const postRef = ref(db, url);
+    await runTransaction(postRef, (post) => {
+      if (post && post[param]) {
+        post[param]++;
+      } else if (post) {
+        post[param] = 1;
+      }
+      return post;
+    });
+    return { ok: "inc" };
+  } catch (error2) {
+    return { error: error2, fn: "inc" };
+  }
+};
+const dec = async (url, param) => {
+  try {
+    const postRef = ref(db, url);
+    await runTransaction(postRef, (post) => {
+      if (post && post[param]) {
+        post[param]--;
+      } else if (post) {
+        post[param] = 0;
+      }
+      return post;
+    });
+    return { ok: "dec" };
+  } catch (error2) {
+    return { error: error2, fn: "dec" };
   }
 };
 const database = {
   getKey,
   update,
   set,
-  once,
+  get,
   on,
   off,
   remove,
-  start
+  start,
+  onDisconnectUpdate,
+  onDisconnectRemove,
+  connect,
+  inc,
+  dec
 };
-const createUserWithEmailAndPassword = async (data) => {
+const createUserWithEmailAndPassword = async (email, password) => {
   try {
     const auth2 = getAuth();
-    return await createUserWithEmailAndPassword$1(auth2, data.email, data.password).then((userCredential2) => {
-      return { ok: "user created", data: userCredential2.user };
+    return await createUserWithEmailAndPassword$1(auth2, email, password).then((userCredential2) => {
+      return { ok: "createUserWithEmailAndPassword", data: userCredential2.user };
     }).catch((error2) => {
       const errorCode = error2.code;
       const errorMessage = error2.message;
-      return { error: errorMessage, errorCode };
+      return { error: errorMessage, errorCode, fn: "createUserWithEmailAndPassword" };
     });
   } catch (error2) {
-    return { error: error2 };
+    return { error: error2, fn: "createUserWithEmailAndPassword" };
   }
 };
-const signInWithEmailAndPassword = async (data) => {
+const signInWithEmailAndPassword = async (email, password) => {
   try {
     const auth2 = getAuth();
-    return await signInWithEmailAndPassword$1(auth2, data.email, data.password).then((userCredential2) => {
-      return { ok: "signed in", data: userCredential2.user };
+    return await signInWithEmailAndPassword$1(auth2, email, password).then((userCredential2) => {
+      return { ok: "signInWithEmailAndPassword", data: userCredential2.user };
     }).catch((error2) => {
       const errorCode = error2.code;
       const errorMessage = error2.message;
-      return { error: errorMessage, errorCode };
+      return { error: errorMessage, errorCode, fn: "signInWithEmailAndPassword" };
     });
   } catch (error2) {
-    return { error: error2 };
+    return { error: error2, fn: "signInWithEmailAndPassword" };
   }
 };
-const signInAnonymously = async (data) => {
+const signInAnonymously = async () => {
   try {
     const auth2 = getAuth();
     return await signInAnonymously$1(auth2).then(() => {
-      return { ok: "signed in", data: userCredential.user };
+      return { ok: "signInAnonymously", data: userCredential.user };
     }).catch((error2) => {
       const errorCode = error2.code;
       const errorMessage = error2.message;
-      return { error: errorMessage, errorCode };
+      return { error: errorMessage, errorCode, fn: "signInAnonymously" };
     });
   } catch (error2) {
-    return { error: error2 };
+    return { error: error2, fn: "signInAnonymously" };
   }
 };
 const signOut = async () => {
   try {
     const auth2 = getAuth();
     return await signOut$1(auth2).then(() => {
-      return { ok: "signed out" };
+      return { ok: "signOut" };
     }).catch((error2) => {
-      return { error: error2 };
+      return { error: error2, fn: "signOut" };
     });
   } catch (error2) {
-    return { error: error2 };
+    return { error: error2, fn: "signOut" };
   }
 };
 const onAuthStateChanged = async (func2) => {
@@ -15803,13 +16124,13 @@ const onAuthStateChanged = async (func2) => {
     const auth2 = getAuth();
     return await onAuthStateChanged$1(auth2, (user) => {
       if (user) {
-        func2({ ok: "signed in", data: user, uid: user.uid });
+        func2({ ok: "signed in", data: user });
       } else {
         func2({ ok: "signed out" });
       }
     });
   } catch (error2) {
-    return func2({ error: error2 });
+    return func2({ error: error2, fn: "onAuthStateChanged" });
   }
 };
 const auth = {
