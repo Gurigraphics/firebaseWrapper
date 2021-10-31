@@ -4,3 +4,4 @@ dist-ssr
 *.local
 secure
 package-lock.json
+docs

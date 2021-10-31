@@ -2,7 +2,7 @@
 
 FirebaseWrapper is a wrapper/helper to Firebase.
 
-In this lib the methods always return {ok: ok} or {error: error} like elixir and go.
+In this lib the methods always return {ok: ok} or {error: error, fn: "funcName"} like elixir and go.
 
 Size: 531kb
 
@@ -21,7 +21,7 @@ const firebaseConfig = {
     storageBucket: "zzzzzzz.appspot.com",
     messagingSenderId: "881609zzzzzzzz",
     appId: "1:881609zzzzzzz:web:aaf4d12764fczzzzzzzzzzz"
-};
+}; 
 
 //start
 var start = await database.start( firebaseConfig )
@@ -52,165 +52,340 @@ var getDataThen = database.once("database").then(function(value){
 
 #### start
 ```javascript
-/*
-Return: { ok: "firebase started" } 
-Return: {error: error}
-*/
-var observerDataOff = database.start().then(function(data){
-   console.log("started")
-   console.log(data)
+/**
+ * start
+ * @returns {Object} - { ok: "start" } | { error: error, fn: "start" }
+ */
+var start = database.start().then(function(data){
+   if(data.ok){
+
+   }else{
+
+   }
 })
 ```
 
 #### getKey
 ```javascript
-/*
-Return: {ok: '-MnAo-WjISLyLV8vNwi8'}
-Return: {error: 'Error: child failed(...)'}
-*/
-var getRefKey = database.getKey("database").then(function(value){
-   console.log(value)
+/**
+ * getKey
+ * @param {string} ref - database url
+ * @returns {Object} - {ok: '-MnAo-WjISLyLV8vNwi8'} | {error: 'Error: child failed(...)', fn: "getKey"}
+ */
+var ref = "database"
+var getRefKey = database.getKey(ref).then(function(data){
+   if(data.ok){
+
+   }else{
+
+   }
 })
 ```
 #### update
 ```javascript
-/*
-Return: {ok: 'Data updated'}
-Return: {error: error}
-*/
-var updateData = database.update({
-   ref: "database",
-   obj: { data: 5 }
-}).then(function(value){
-   console.log(value)
+/**
+ * update
+ * @param {string} ref - database url
+ * @param {Object} obj - a object
+ * @returns {Object} - {ok: 'update'} | {error: error, fn: "update"}
+ */
+var ref = "database"
+var obj = { data: 5 }
+var updateData = database.update(ref, obj).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
 })
  ```
 
 #### set
 ```javascript
-/*
-Return: {ok: 'Data setted'}
-Return: {error: error}
-*/
-var setData = database.set({
-   ref: "database",
-   obj: { data: 6 }
-}).then(function(value){
-   console.log(value)
+/**
+ * set
+ * @param {string} ref - database url
+ * @param {Object} obj - a object
+ * @returns {Object} - {ok: 'set'} | {error: error, fn: "set"}
+ */
+var ref = "database"
+var obj = { data: 5 }
+var updateData = database.set(ref, obj).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
 })
-```
+ ```
 
 #### once
 ```javascript
-/*
-Return: {ok: value}
-Return: {ok: "No data"}
-Return: {error: error}
-*/
-var getData = database.once("database").then(function(value){
-   console.log(value)
+/**
+ * once
+ * @param {string} ref - database url
+ * @returns {Object} - {ok: value} | {error: error, fn: "once"}
+ */
+var ref = "database"
+var getData = database.once(ref).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
 })
 ```
 
 #### on
 ```javascript
-/*
-Return: {ok: value}
-Return: {ok: "No data"}
-Return: {error: error}
-*/
-var observerData = database.on('database', changed => {
+/**
+ * on
+ * @param {string} ref - database url
+ * @param {Function} data - updated always data change
+ * @returns {Object} - {ok: value} | {error: error, fn: "on"}
+ */
+var ref = "database"
+var observerData = database.on(ref, changed => {
+   if(changed.ok){
 
-   console.log("atualizou")
-   console.log(changed)
+   }else{
+
+   }
 })
 ```
-#### remove
-```javascript
-/*
-Return: {ok: "Data removed"}
-Return: {error: error}
-*/
-var removeData = database.remove('database/data').then(function(data){
 
-   console.log("removeu")
-   console.log(data)
-})
-```
 #### off
 ```javascript
-/*
-Return: {ok: "off"}
-Return: {error: error}
-*/
-var observerDataOff = database.off('database').then(function(data){
-   console.log("desligou")
-   console.log(data)
+/**
+ * off
+ * @param {string} ref - database url
+ * @returns {Object} - {ok: "off"} | {error: error, fn: "off"}
+ */
+var ref = "database"
+var observerData = database.off(ref).then(function(data){
+   if(data.ok){
+
+   }else{
+
+   }
+})
+
+```
+
+#### remove
+```javascript
+/**
+ * remove
+ * @param {string} ref - database url
+ * @returns {Object} - {ok: "remove"} | {error: error, fn: "remove"}
+ */
+var ref = "database"
+var removeData = database.remove(ref).then(function(data){
+   if(data.ok){
+
+   }else{
+
+   }
 })
 ```
+
+#### onDisconnectUpdate
+```javascript
+/**
+ * onDisconnectUpdate
+ * @param {string} ref - database url
+ * @param {Object} obj - a object
+ * @returns {Object} - {ok: "onDisconnectUpdate"} | { error: error, fn: "onDisconnectUpdate" } 
+ */
+var ref = "database"
+var obj = { data: 5 }
+var updateData = database.onDisconnectUpdate(ref, obj).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
+})
+ ```
+
+#### onDisconnectRemove
+```javascript
+/**
+ * onDisconnectRemove
+ * @param {string} ref - database url
+ * @returns {Object} - {ok: "onDisconnectRemove"} | { error: error, fn: "onDisconnectRemove" } 
+ */
+var ref = "database"
+var updateData = database.onDisconnectRemove(ref).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
+})
+ ```
+
+#### onDisconnectCancel
+```javascript
+/**
+ * onDisconnectCancel
+ * @param {string} ref - database url
+ * @returns {Object} - {ok: "onDisconnectCancel"} | { error: error, fn: "onDisconnectCancel" } 
+ */
+var ref = "database"
+var updateData = database.onDisconnectCancel(ref).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
+})
+ ```
+
+#### connect
+```javascript
+/**
+ * connect
+ * @param {string} ref - database url
+ * @param {Function} data - updated always connect change
+ * @returns {Object} - {ok: "connect"} | {ok: "disconnected"} | { error: error, fn: "connect" } 
+ */
+var ref = "database"
+var observerData = database.connect(ref, data => {
+   if(data.ok == "connected"){
+
+   }else if(data.ok == "disconnected"){
+
+   }else{
+
+   }
+})
+ ```
+
+#### inc
+```javascript
+/**
+ * inc
+ * @param {string} ref - database url
+ * @param {string} param - a object param
+ * @returns {Object} - {ok: "inc"} | {error: error, fn: "inc"}
+ */
+var ref = "database"
+var param = "score"
+var updateData = database.inc(ref, param).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
+})
+ ```
+  
+#### dec
+```javascript
+/**
+ * dec
+ * @param {string} ref - database url
+ * @param {string} param - a object param
+ * @returns {Object} - {ok: "dec"} | {error: error, fn: "dec"}
+ */
+var ref = "database"
+var param = "score"
+var updateData = database.dec(ref, param).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
+})
+ ```
 
 
 ### Auth
  
 #### signInAnonymously
 ```javascript
-/*
-Return: { ok: "signed in", data: userCredential.user } 
-Return: { error: errorMessage, errorCode: errorCode }   
-*/
+/**
+ * signInAnonymously
+ * @returns {Object} - { ok: "signInAnonymously", data: userCredential.user } | { error: error, fn: "signInAnonymously" }
+ */
 var loginAnonymously = auth.signInAnonymously().then(function(value){
-   console.log(value)
+   if(data.ok){
+
+   }else{
+
+   }
 })
 ```
+
 #### signOut
 ```javascript
-/*
-Return: { ok: "signed out" } 
-Return: { error: error }  
-*/
+/**
+ * start
+ * @returns {Object} - { ok: "signOut" } | { error: error, fn: "signOut" }
+ */
 var logout = auth.signOut().then(function(value){
-   console.log(value)
+   if(data.ok){
+
+   }else{
+
+   }
 })
 ```
 
 #### createUserWithEmailAndPassword
 ```javascript
-/*
-Return: { ok: "user created", data: userCredential.user } 
-Return: { error: errorMessage, errorCode: errorCode } 
-*/
-var login = auth.createUserWithEmailAndPassword({
-   email: "user2@email.com",
-   password: "senha123"
-}).then(function(value){
-   console.log(value)
-})
-```
-#### signInWithEmailAndPassword
-```javascript
-/*
-Return: { ok: "signed in", data: userCredential.user } 
-Return: { error: errorMessage, errorCode: errorCode } 
-*/
-var login = auth.signInWithEmailAndPassword({
-   email: "user2@email.com",
-   password: "senha123"
-}).then(function(value){
-   console.log(value)
-})
-```
-#### onAuthStateChanged
-```javascript
-/*
-Return: { ok: "signed in", data: user, uid: user.uid }
-Return: { ok: 'signed out' }
-*/
-var observerAuthChanged = auth.onAuthStateChanged(changed => {
-   console.log("onAuthStateChanged")
-   console.log(changed)
+/**
+ * createUserWithEmailAndPassword
+ * @param {string} email  
+ * @param {string} password 
+ * @returns {Object} - { ok: "createUserWithEmailAndPassword" } | { error: error, fn: "createUserWithEmailAndPassword" }
+ */
+var email = "user@email.com"
+var password = "password123456"
+var login = auth.createUserWithEmailAndPassword(user, password).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
 })
 ```
 
+#### signInWithEmailAndPassword
+```javascript
+/**
+ * signInWithEmailAndPassword
+ * @param {string} email  
+ * @param {string} password 
+ * @returns {Object} - { ok: "signInWithEmailAndPassword", data: userCredential.user } | { error: error, fn: "signInWithEmailAndPassword" }
+ */
+var email = "user@email.com"
+var password = "password123456"
+var login = auth.signInWithEmailAndPassword(user, password).then(function(value){
+   if(data.ok){
+
+   }else{
+
+   }
+})
+```
+
+#### onAuthStateChanged
+```javascript
+/**
+ * onAuthStateChanged
+ * @param {Function} data - execute always auth change
+ * @returns {Object} - { ok: "signed in", data: user } | { ok: 'signed out' } | { error: error, fn: "onAuthStateChanged" }
+ */
+var observerAuthChanged = auth.onAuthStateChanged(changed => {
+   if(changed.ok){
+
+   }else{
+
+   }
+})
+```
 
 ### How update
 
@@ -230,9 +405,16 @@ To Build run
 npm run build
 ```
 
+### Generate Docs
+
+To generate docs
+```
+npm run doc
+```
+
 
 ### License
 
- [MIT](http://opensource.org/licenses/MIT)
+[MIT](http://opensource.org/licenses/MIT)
 
 Copyright (c) Gurigraphics, 2021.

@@ -24,11 +24,9 @@ const getKey = async url => {
 
 const update = async(url, obj) => {   
  try{
-  //const updates = {};
- // updates[url] = data.obj;
 
   return await _update(ref(db, url), obj).then(() => {	
-	   return { ok: "Data updated" }
+	   return { ok: "update" }
   }).catch((error) => {
 	   return { error: error, fn: "update" }
   }) 
@@ -40,7 +38,7 @@ const update = async(url, obj) => {
 const set = async(url, obj) => {
    try{
 	return await _set(ref(db, url), obj).then(() => {	
-	   return { ok: "Data setted" }
+	   return { ok: "set" }
 	}).catch((error) => {
 	   return { error: error, fn: "set" }
 	}) 
@@ -53,7 +51,7 @@ const get = async(url) => {
 	try{ 
    return await _get( ref(db, url) ).then((snapshot) => {
 	  if( snapshot.exists() ) return { ok: snapshot.val() }
-	  else return { ok: "No data" }
+	  else return { error: "No exists", fn: "get" }
 
 	}).catch((error) => {
 	   return { error: error, fn: "get" }
@@ -68,7 +66,7 @@ const on = async(url, func) => {
 	   var x = await onValue( ref(db, url), (snapshot) => {
 		  const data = snapshot.val();
 	  	  if( snapshot.exists() ) return func({ ok: data })
-	     else return func({ ok: "No data" }) 
+	      else return { error: "No exists", fn: "get" }
 		}) 
 
 	}catch(error) {
@@ -90,7 +88,7 @@ const off = async(url) => {
 const remove = async(url) => {
  try{
 	return await _remove( ref(db, url) ).then(() => {	
-	   return { ok: "Data removed" }
+	   return { ok: "remove" }
 	}).catch((error) => {
 	   return { error: error, fn: "remove" }
 	})  
@@ -155,7 +153,7 @@ const connect = async(func) => {
 		})
 
   }catch(error){
-    return { error: error, fn: "connected" } 
+    return { error: error, fn: "connect" } 
   }  
 }  
  

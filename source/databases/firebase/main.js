@@ -21,7 +21,7 @@ export const start = async (firebaseConfig, emulator) => {
       connectAuthEmulator(auth, `http://localhost:${emulator.auth}`);
     } 
 
-    return { ok: "firebase started" } 
+    return { ok: "start" } 
     
   }catch(error){
     return { error: error } 

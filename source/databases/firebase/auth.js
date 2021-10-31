@@ -1,19 +1,19 @@
 import { db } from "./main" 
 import { 
-	getAuth, 
-	createUserWithEmailAndPassword as _createUserWithEmailAndPassword, 
-	signInWithEmailAndPassword as _signInWithEmailAndPassword, 
-	onAuthStateChanged as _onAuthStateChanged,
-	signInAnonymously as _signInAnonymously,
-	signOut as _signOut
+  getAuth, 
+  createUserWithEmailAndPassword as _createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword as _signInWithEmailAndPassword, 
+  onAuthStateChanged as _onAuthStateChanged,
+  signInAnonymously as _signInAnonymously,
+  signOut as _signOut
 } from "firebase/auth";
  
 const createUserWithEmailAndPassword = async(email, password) => {
-	 try{
+   try{
    const auth = getAuth();
-	return await _createUserWithEmailAndPassword(auth, email, password)
+  return await _createUserWithEmailAndPassword(auth, email, password)
   .then((userCredential) => {
-  	  return { ok: "user created", data: userCredential.user } 
+      return { ok: "createUserWithEmailAndPassword", data: userCredential.user } 
   })
   .catch((error) => {
     const errorCode = error.code;
@@ -21,33 +21,33 @@ const createUserWithEmailAndPassword = async(email, password) => {
     return { error: errorMessage, errorCode: errorCode, fn: "createUserWithEmailAndPassword" } 
   })
      }catch(error) {
-	  return { error: error, fn: "createUserWithEmailAndPassword" }
+    return { error: error, fn: "createUserWithEmailAndPassword" }
    }  
 }
 
 const signInWithEmailAndPassword = async(email, password) => {
-	 try{
+   try{
    const auth = getAuth();
   return await _signInWithEmailAndPassword(auth, email, password).then((userCredential) => {
-  	  // Signed in
-  	  return { ok: "signed in", data: userCredential.user } 
+      // Signed in
+      return { ok: "signInWithEmailAndPassword", data: userCredential.user } 
   }).catch((error) => {
     const errorCode = error.code;
     const errorMessage = error.message;
     return { error: errorMessage, errorCode: errorCode, fn: "signInWithEmailAndPassword" } 
   })
    }catch(error) {
-	  return { error: error, fn: "signInWithEmailAndPassword" }
+    return { error: error, fn: "signInWithEmailAndPassword" }
    }  
 }
 
 const signInAnonymously = async() => {
-	try{
+  try{
   const auth = getAuth();
   return await _signInAnonymously(auth)
   .then(() => {
     // Signed in..
-    return { ok: "signed in", data: userCredential.user } 
+    return { ok: "signInAnonymously", data: userCredential.user } 
   })
   .catch((error) => {
     const errorCode = error.code;
@@ -55,45 +55,45 @@ const signInAnonymously = async() => {
     return { error: errorMessage, errorCode: errorCode, fn: "signInAnonymously" } 
   });
     }catch(error) {
-	  return { error: error, fn: "signInAnonymously" }
+    return { error: error, fn: "signInAnonymously" }
    }  
 }
 
 const signOut = async() => {
-		try{
+    try{
   const auth = getAuth();
   return await _signOut(auth).then(() => {
-  	// Signed out..
-    return { ok: "signed out" }   
+    // Signed out..
+    return { ok: "signOut" }   
   }).catch((error) => {
      return { error: error, fn: "signOut" } 
   });
     }catch(error) {
-	  return { error: error, fn: "signOut" }
+    return { error: error, fn: "signOut" }
    }  
 }
 
 const onAuthStateChanged = async(func) => {
-	try{
+  try{
    const auth = getAuth();
-	return await _onAuthStateChanged(auth, (user) => {
-	  if (user) {	  
-	    func({ ok: "signed in", data: user, uid: user.uid })
-	  }else {
-	    // User is signed out
-	    func({ ok: 'signed out' })
-	  }
-	});
-	   }catch(error) {
-	  return func({ error: error, fn: "onAuthStateChanged" }) 
+  return await _onAuthStateChanged(auth, (user) => {
+    if (user) {   
+      func({ ok: "signed in", data: user })
+    }else {
+      // User is signed out
+      func({ ok: 'signed out' })
+    }
+  });
+     }catch(error) {
+    return func({ error: error, fn: "onAuthStateChanged" }) 
    } 
 }
 
 export const auth = {
-	createUserWithEmailAndPassword,
-	signInWithEmailAndPassword,
-	signInAnonymously,
-	onAuthStateChanged,
-	signOut
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInAnonymously,
+  onAuthStateChanged,
+  signOut
 }
   
