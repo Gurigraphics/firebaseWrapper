@@ -28,19 +28,19 @@ var start = await database.start( firebaseConfig )
 console.log(start)
 
 //update data
-var updateData = await database.update({
-   ref: "database",
-   obj: { data: 6 }
-})
+var ref = "database"
+var obj = {score: 50}
+
+var updateData = await database.update(ref, obj)
 console.log(updateData)
 
 //get data
-var getData = await database.once("database")
+var getData = await database.once(ref)
 console.log(getData)
 
 
 //or use THEN
-var getDataThen = database.once("database").then(function(value){
+var getDataThen = database.once(ref).then(function(value){
    console.log(getDataThen)
 })
 
