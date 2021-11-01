@@ -46,6 +46,30 @@ var getDataThen = database.once(ref).then(function(value){
 
 ```
 
+### Emulators
+
+1) To use emulators create a new project 
+```javascript
+firebase init
+```
+2) Select -> database, auth and emulators
+
+
+3) In public folder add your HTML and JS files. And insert database and auth ports
+
+```javascript
+var start = await database.start( firebaseConfig, { database: 9000, auth: 9099 } )
+```
+
+4) Add the file "firebaseWrapper.js" to folder "your-project/public/source"
+
+3) To execute emulators run
+
+```
+firebase emulators:start --export-on-exit=./saved-data --import=./saved-data
+```
+
+
 ## Methods
 
 ### Database
