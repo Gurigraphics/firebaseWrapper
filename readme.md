@@ -119,7 +119,7 @@ var updateData = database.set(ref, obj).then(function(value){
 })
  ```
 
-#### once
+#### get
 ```javascript
 /**
  * once
@@ -127,7 +127,7 @@ var updateData = database.set(ref, obj).then(function(value){
  * @returns {Object} - {ok: value} | {error: error, fn: "once"}
  */
 var ref = "database"
-var getData = database.once(ref).then(function(value){
+var getData = database.get(ref).then(function(value){
    if(data.ok){
 
    }else{
